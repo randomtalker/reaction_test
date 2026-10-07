@@ -2,7 +2,7 @@ import os
 
 import psycopg
 from dotenv import load_dotenv
-from flask import Flask
+from flask import Flask, render_template
 
 load_dotenv()
 app = Flask(__name__)
@@ -23,3 +23,7 @@ def db_check():
         password=os.getenv("DB_PASSWORD"),
     ) as conn:
         return conn.execute("SELECT version()").fetchone()[0]
+
+@app.route("/signup")
+def sign_up():
+    return render_template("signup.html")
