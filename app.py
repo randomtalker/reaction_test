@@ -2,7 +2,7 @@ import os
 
 import psycopg
 from dotenv import load_dotenv
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 
 load_dotenv()
 app = Flask(__name__)
@@ -24,6 +24,9 @@ def db_check():
     ) as conn:
         return conn.execute("SELECT version()").fetchone()[0]
 
-@app.route("/signup")
+@app.route("/signup",methods=["GET","POST"])
 def sign_up():
+    if request.method == "POST":
+        print("id:",request.form["nickname"])
+        print("pw:",request.form["password"])
     return render_template("signup.html")
