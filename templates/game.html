@@ -16,17 +16,23 @@
       font-family: sans-serif;
       background: #f3f4f6;
     }
+    #round {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
     #game-area {
       width: 90vw;
-      height: 70vh;
+      height: 60vh;
       border-radius: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
       color: #fff;
-      font-size: 3rem;
+      font-size: 2.5rem;
       font-weight: bold;
       text-align: center;
+      white-space: pre-line;
       cursor: pointer;
       user-select: none;
       touch-action: manipulation;
@@ -34,30 +40,73 @@
     .idle    { background-color: #6b7280; }
     .waiting { background-color: #b85450; }
     .go      { background-color: #4a78a8; }
-    #result  { font-size: 1.25rem; margin: 0; }
+    table {
+      border-collapse: collapse;
+      font-size: 1rem;
+    }
+    th, td {
+      border: 1px solid #d1d5db;
+      padding: 8px 10px;
+      min-width: 56px;
+      text-align: center;
+    }
+    th   { background: #e5e7eb; }
+    #avg { font-weight: bold; }
   </style>
 </head>
 <body>
+  <p id="round">1 / 3</p>
+
   <div id="game-area" class="idle">눌러서 시작</div>
-  <p id="result"></p>
+
+  <table>
+    <tr><th>1회차</th><th>2회차</th><th>3회차</th><th>평균</th></tr>
+    <tr><td id="r1">-</td><td id="r2">-</td><td id="r3">-</td><td id="avg">-</td></tr>
+  </table>
+
   <a href="/logout">로그아웃</a>
 
   <script>
+    const ROUNDS = 3;
+    const MIN_MS = 100;
+    const MAX_MS = 10000;
+
     const area = document.getElementById("game-area");
-    const result = document.getElementById("result");
+    const roundLabel = document.getElementById("round");
+    const avgCell = document.getElementById("avg");
 
     let state = "idle";   // "idle" → "waiting" → "go" → "idle"
-    let goTime = 0;       // 측정시작 시각
+    let goTime = 0;       // 파란색으로 바뀐 순간의 시각
+    let timerId = null;   // "몇 초 뒤 파랑" 예약 번호
+    let records = [];     // 이번 판의 회차별 기록
+
+    function resetTable() {
+      for (let i = 1; i <= ROUNDS; i++) {
+        document.getElementById("r" + i).textContent = "-";
+      }
+      avgCell.textContent = "-";
+    }
+
+    function fail(message) {
+      clearTimeout(timerId);
+      records = [];
+      resetTable();
+      roundLabel.textContent = "1 / " + ROUNDS;
+      state = "idle";
+      area.className = "idle";
+      area.textContent = message + "\n눌러서 처음부터";
+    }
 
     area.addEventListener("pointerdown", () => {
       if (state === "idle") {
+        if (records.length === 0) resetTable();   // 새 판이면 지난 표 지우기
+        roundLabel.textContent = (records.length + 1) + " / " + ROUNDS;
         state = "waiting";
         area.className = "waiting";
         area.textContent = "대기";
-        result.textContent = "";
 
         const delay = 1000 + Math.random() * 4000;   // 1000~5000ms
-        setTimeout(() => {
+        timerId = setTimeout(() => {
           state = "go";
           area.className = "go";
           area.textContent = "클릭!";
@@ -65,14 +114,28 @@
         }, delay);
 
       } else if (state === "waiting") {
-        // 3단계에서 "너무 빨랐다 → 재시작"으로 바꿀 자리. 지금은 무시
+        fail("너무 빨랐습니다");
 
       } else if (state === "go") {
         const ms = Math.round(performance.now() - goTime);
+        if (ms < MIN_MS) { fail("100ms 미만 무효"); return; }
+        if (ms > MAX_MS) { fail("10초 초과"); return; }
+
+        records.push(ms);
+        document.getElementById("r" + records.length).textContent = ms;
         state = "idle";
         area.className = "idle";
-        area.textContent = "눌러서 다시 시작";
-        result.textContent = ms + " ms";
+
+        if (records.length < ROUNDS) {
+          roundLabel.textContent = (records.length + 1) + " / " + ROUNDS;
+          area.textContent = ms + " ms\n눌러서 다음 회차";
+        } else {
+          const avg = Math.round(records.reduce((a, b) => a + b, 0) / ROUNDS);
+          avgCell.textContent = avg;
+          roundLabel.textContent = "완료";
+          area.textContent = "평균 " + avg + " ms\n눌러서 다시 시작";
+          records = [];
+        }
       }
     });
   </script>
