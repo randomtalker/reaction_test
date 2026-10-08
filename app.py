@@ -147,6 +147,22 @@ def g_submit():
         return {"error": "invalid records"}, 400
 
     avg = round(sum(records)/len(records))    
+
+    with get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO record (account_id, best_record)
+            VALUES (%s, %s)
+            ON CONFLICT (account_id) DO UPADATE
+            SET best_record = EXCLUDED.best_record,
+                best_at = now()
+            WHERE EXCLUDED.best_record <= record.best_record
+            """,
+            (login_id, avg),
+        )
+
+
+
     
 
     return {"avg":avg}
