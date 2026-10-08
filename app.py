@@ -9,6 +9,15 @@ from flask import Flask, render_template, request
 load_dotenv()
 app = Flask(__name__)
 
+def get_conn():
+    return psycopg.connect(
+        host=os.getenv("DB_HOST"),
+        port=os.getenv("DB_PORT"),
+        dbname=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+    )
+
 
 @app.route("/")
 def index():
@@ -17,13 +26,7 @@ def index():
 
 @app.route("/db_check")
 def db_check():
-    with psycopg.connect(
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT"),
-        dbname=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-    ) as conn:
+    with get_conn() as conn:
         return conn.execute("SELECT version()").fetchone()[0]
 
 @app.route("/signup",methods=["GET","POST"])
@@ -46,7 +49,15 @@ def sign_up():
             return "pw doesnt follow the rule(symbolcase)"
 
         hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
-        return hashed.decode()
+        with get_conn() as conn:
+            try:
+                conn.execute(
+                    "INSERT INTO account (id, password) VALUES (%s, %s)",
+                    (nickname, hashed.decode()),
+                )
+            except psycopg.errors.UniqueViolation:
+                return "Already used nickname"
+        return "Enroll COMPLETE"
 
         
     return render_template("signup.html")
