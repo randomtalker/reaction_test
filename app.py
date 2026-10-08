@@ -1,3 +1,4 @@
+import time
 import os
 import re
 
@@ -105,8 +106,50 @@ def game():
     login_id = session.get("login_id")
     if not login_id :
         return redirect(url_for("log_in"))
-        
+    return render_template("game.html")
 
+
+@app.route("/game/start", methods=["POST"])
+def game_start():
+    login_id = session.get("login_id")
+    if not login_id :
+        return {"error": "not logged in"}, 401
+    
+    session["start_time"] = time.time()
+
+    return {"ok":True}
+
+
+@app.route("/game/submit", methods=["POST"])
+def g_submit():
+    login_id = session.get("login_id")
+    if not login_id :
+            return {"error": "not logged in"}, 401
+    start_time = session.pop("start_time",None)
+    if not start_time : 
+        return {"error": "time_error" }, 400
+    
+    cur_time = time.time()
+    if cur_time < start_time or cur_time-start_time <= 3.3:
+        return {"error": "invalid time"}, 400
     
 
-    return render_template("game.html")
+    data = request.get_json()
+    records = data.get("records")
+    if not isinstance(records,list):
+        return {"error": "invalid records" }, 400
+
+    
+    if len(records) != 3 or (not all(isinstance(x, int) for x in records)):
+        return {"error": "invalid records"}, 400
+
+    if not all( 100 <= y <= 10000 for y in records) :
+        return {"error": "invalid records"}, 400
+
+    avg = round(sum(records)/len(records))    
+    
+
+    return {"avg":avg}
+
+
+

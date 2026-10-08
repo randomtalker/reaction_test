@@ -99,7 +99,10 @@
 
     area.addEventListener("pointerdown", () => {
       if (state === "idle") {
-        if (records.length === 0) resetTable();   // 새 판이면 지난 표 지우기
+        if (records.length === 0){   // 새 판 시작
+          resetTable();
+          fetch("/game/start", { method: "POST" });
+        }
         roundLabel.textContent = (records.length + 1) + " / " + ROUNDS;
         state = "waiting";
         area.className = "waiting";
@@ -130,10 +133,20 @@
           roundLabel.textContent = (records.length + 1) + " / " + ROUNDS;
           area.textContent = ms + " ms\n눌러서 다음 회차";
         } else {
-          const avg = Math.round(records.reduce((a, b) => a + b, 0) / ROUNDS);
-          avgCell.textContent = avg;
           roundLabel.textContent = "완료";
-          area.textContent = "평균 " + avg + " ms\n눌러서 다시 시작";
+          area.textContent = "계산 중...";
+
+          fetch("/game/submit", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ records: records }),
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              avgCell.textContent = data.avg;
+              area.textContent = "평균 " + data.avg + " ms\n눌러서 다시 시작";
+            });
+
           records = [];
         }
       }
