@@ -1,6 +1,6 @@
-import time
 import os
 import re
+import time
 
 import bcrypt
 import psycopg
@@ -59,7 +59,9 @@ def sign_up():
                 )
             except psycopg.errors.UniqueViolation:
                 return "Already used nickname"
-        return "Enroll COMPLETE"
+
+        session["login_id"] = nickname
+        return redirect(url_for("game"))
 
         
     return render_template("signup.html")
@@ -153,7 +155,7 @@ def g_submit():
             """
             INSERT INTO record (account_id, best_record)
             VALUES (%s, %s)
-            ON CONFLICT (account_id) DO UPADATE
+            ON CONFLICT (account_id) DO UPDATE
             SET best_record = EXCLUDED.best_record,
                 best_at = now()
             WHERE EXCLUDED.best_record <= record.best_record
