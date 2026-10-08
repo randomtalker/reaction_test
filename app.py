@@ -61,3 +61,24 @@ def sign_up():
 
         
     return render_template("signup.html")
+
+
+@app.route("/login",methods=["GET","POST"])
+def log_in():
+    if request.method == "POST":
+        nickname = request.form["nickname"]
+        password = request.form["password"]
+        with get_conn() as gcon:
+            
+            hashed_pw = gcon.execute(
+                "SELECT password FROM account WHERE id = %s ", (nickname, )
+            ).fetchone()
+            if not hashed_pw : #없는아이디일 경우
+                return "check your nickname and password OR join us first"
+
+            if not bcrypt.checkpw(password.encode(), hashed_pw[0].encode()): #비번 안맞을 경우
+                return "check your nickname and password OR join us first"
+
+        return "login  complete"
+    
+    return render_template("login.html")
