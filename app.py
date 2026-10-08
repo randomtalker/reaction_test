@@ -151,7 +151,7 @@ def g_submit():
     avg = round(sum(records)/len(records))    
 
     with get_conn() as conn:
-        conn.execute(
+        row = conn.execute(
             """
             INSERT INTO record (account_id, best_record)
             VALUES (%s, %s)
@@ -159,15 +159,43 @@ def g_submit():
             SET best_record = EXCLUDED.best_record,
                 best_at = now()
             WHERE EXCLUDED.best_record <= record.best_record
+            RETURNING old.best_record
             """,
             (login_id, avg),
-        )
+        ).fetchone()
 
+        best = conn.execute(            
+            "SELECT best_record FROM record WHERE account_id = %s",
+            (login_id,),            
+        ).fetchone()[0]
+        updated = True
 
+        if not row: # 느려
+            updated = False
 
+        elif not row[0]: # 신규기록
+            best = avg
+            
+        elif avg < row[0] : # 기록갱신
+            pass
+
+        else: # 동점
+
+            updated = False
+
+    return {"avg":avg, "best" : best, "updated": updated }
+
+@app.route("/ranking")
+def ranking():
+    with get_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT account_id, best_record
+            FROM record
+            ORDER BY best_record ASC, best_at DESC, record_id DESC
+            LIMIT 10
+
+            """
+        ).fetchall()
     
-
-    return {"avg":avg}
-
-
-
+    return render_template("ranking.html", rows=rows)

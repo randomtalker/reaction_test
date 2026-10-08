@@ -52,6 +52,29 @@
     }
     th   { background: #e5e7eb; }
     #avg { font-weight: bold; }
+
+    #actions {
+      display: flex;
+      gap: 12px;
+    }
+    #actions[hidden] { display: none; }   /* display:flex가 hidden을 덮어쓰지 않게 */
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: bold;
+      color: #fff;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .btn-retry   { background: #4a78a8; }
+    .btn-ranking { background: #6b7280; }
+    .logout {
+      color: #6b7280;
+      font-size: 0.9rem;
+    }
   </style>
 </head>
 <body>
@@ -64,7 +87,12 @@
     <tr><td id="r1">-</td><td id="r2">-</td><td id="r3">-</td><td id="avg">-</td></tr>
   </table>
 
-  <a href="/logout">로그아웃</a>
+  <div id="actions" hidden>
+    <button id="retry" class="btn btn-retry" type="button">한 번 더하기</button>
+    <a class="btn btn-ranking" href="{{ url_for('ranking') }}">랭킹 보기</a>
+  </div>
+
+  <a class="logout" href="{{ url_for('log_out') }}">로그아웃</a>
 
   <script>
     const ROUNDS = 3;
@@ -74,8 +102,10 @@
     const area = document.getElementById("game-area");
     const roundLabel = document.getElementById("round");
     const avgCell = document.getElementById("avg");
+    const actions = document.getElementById("actions");
+    const retryBtn = document.getElementById("retry");
 
-    let state = "idle";   // "idle" → "waiting" → "go" → "idle"
+    let state = "idle";   // "idle" → "waiting" → "go" → "idle" … 3회 끝나면 "done"
     let goTime = 0;       // 파란색으로 바뀐 순간의 시각
     let timerId = null;   // "몇 초 뒤 파랑" 예약 번호
     let records = [];     // 이번 판의 회차별 기록
@@ -97,24 +127,29 @@
       area.textContent = message + "\n눌러서 처음부터";
     }
 
+    // 한 회차 시작 (영역 클릭과 "한 번 더하기" 버튼이 같이 사용)
+    function startRound() {
+      if (records.length === 0) {   // 새 판 시작
+        resetTable();
+        fetch("/game/start", { method: "POST" });
+      }
+      roundLabel.textContent = (records.length + 1) + " / " + ROUNDS;
+      state = "waiting";
+      area.className = "waiting";
+      area.textContent = "대기";
+
+      const delay = 1000 + Math.random() * 4000;   // 1000~5000ms
+      timerId = setTimeout(() => {
+        state = "go";
+        area.className = "go";
+        area.textContent = "클릭!";
+        goTime = performance.now();
+      }, delay);
+    }
+
     area.addEventListener("pointerdown", () => {
       if (state === "idle") {
-        if (records.length === 0){   // 새 판 시작
-          resetTable();
-          fetch("/game/start", { method: "POST" });
-        }
-        roundLabel.textContent = (records.length + 1) + " / " + ROUNDS;
-        state = "waiting";
-        area.className = "waiting";
-        area.textContent = "대기";
-
-        const delay = 1000 + Math.random() * 4000;   // 1000~5000ms
-        timerId = setTimeout(() => {
-          state = "go";
-          area.className = "go";
-          area.textContent = "클릭!";
-          goTime = performance.now();
-        }, delay);
+        startRound();
 
       } else if (state === "waiting") {
         fail("너무 빨랐습니다");
@@ -126,13 +161,14 @@
 
         records.push(ms);
         document.getElementById("r" + records.length).textContent = ms;
-        state = "idle";
         area.className = "idle";
 
         if (records.length < ROUNDS) {
+          state = "idle";
           roundLabel.textContent = (records.length + 1) + " / " + ROUNDS;
           area.textContent = ms + " ms\n눌러서 다음 회차";
         } else {
+          state = "done";   // 이후 영역은 눌러도 반응 없음, 버튼으로만 진행
           roundLabel.textContent = "완료";
           area.textContent = "계산 중...";
 
@@ -141,15 +177,37 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ records: records }),
           })
-            .then((res) => res.json())
+            .then((res) => {
+              if (!res.ok) throw new Error(res.status);   // 400·401 등은 실패로 처리
+              return res.json();
+            })
+
             .then((data) => {
               avgCell.textContent = data.avg;
-              area.textContent = "평균 " + data.avg + " ms\n눌러서 다시 시작";
+              let text = "이번 " + data.avg + " ms\n최고 " + data.best + " ms";
+              if (data.updated) {
+                text = "최고 기록 갱신!\n" + text;
+              }
+              area.textContent = text;
+            })
+
+
+            .catch(() => {
+              area.textContent = "기록 저장 실패";
+            })
+            .finally(() => {
+              actions.hidden = false;   // 성공·실패 상관없이 버튼 표시
             });
 
           records = [];
         }
       }
+      // state === "done"이면 위 어느 분기에도 안 걸려서 아무 일도 안 일어남
+    });
+
+    retryBtn.addEventListener("click", () => {
+      actions.hidden = true;
+      startRound();
     });
   </script>
 </body>
