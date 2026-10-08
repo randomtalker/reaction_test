@@ -4,10 +4,11 @@ import re
 import bcrypt
 import psycopg
 from dotenv import load_dotenv
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, session
 
 load_dotenv()
 app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY")
 
 def get_conn():
     return psycopg.connect(
@@ -65,6 +66,9 @@ def sign_up():
 
 @app.route("/login",methods=["GET","POST"])
 def log_in():
+    if request.method == "GET":
+        return render_template("login.html")
+
     if request.method == "POST":
         nickname = request.form["nickname"]
         password = request.form["password"]
@@ -78,7 +82,14 @@ def log_in():
 
             if not bcrypt.checkpw(password.encode(), hashed_pw[0].encode()): #비번 안맞을 경우
                 return "check your nickname and password OR join us first"
-
+            
+        session["login_id"] = nickname
         return "login  complete"
     
-    return render_template("login.html")
+@app.route("/me")
+def cookie_test():
+    login_TF = session.get("login_id")
+    if not login_TF:
+        return "not logged in"
+
+    return login_TF
