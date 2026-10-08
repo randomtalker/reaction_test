@@ -4,7 +4,7 @@ import re
 import bcrypt
 import psycopg
 from dotenv import load_dotenv
-from flask import Flask, render_template, request, session
+from flask import Flask, redirect, render_template, request, session, url_for
 
 load_dotenv()
 app = Flask(__name__)
@@ -84,7 +84,7 @@ def log_in():
                 return "check your nickname and password OR join us first"
             
         session["login_id"] = nickname
-        return "login  complete"
+        return redirect(url_for("game"))
     
 @app.route("/me")
 def cookie_test():
@@ -93,3 +93,20 @@ def cookie_test():
         return "not logged in"
 
     return login_TF
+
+@app.route("/logout")
+def log_out():
+    session.clear()
+
+    return redirect(url_for("log_in"))
+
+@app.route("/game")
+def game():
+    login_id = session.get("login_id")
+    if not login_id :
+        return redirect(url_for("log_in"))
+        
+
+    
+
+    return render_template("game.html")
