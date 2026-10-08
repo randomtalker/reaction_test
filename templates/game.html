@@ -4,19 +4,77 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>반응속도 측정</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      font-family: sans-serif;
+      background: #f3f4f6;
+    }
+    #game-area {
+      width: 90vw;
+      height: 70vh;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 3rem;
+      font-weight: bold;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+      touch-action: manipulation;
+    }
+    .idle    { background-color: #6b7280; }
+    .waiting { background-color: #b85450; }
+    .go      { background-color: #4a78a8; }
+    #result  { font-size: 1.25rem; margin: 0; }
+  </style>
 </head>
 <body>
-  <main>
-    <h1>반응속도 측정</h1>
+  <div id="game-area" class="idle">눌러서 시작</div>
+  <p id="result"></p>
+  <a href="/logout">로그아웃</a>
 
-    <button id="start-btn" type="button">시작</button>
+  <script>
+    const area = document.getElementById("game-area");
+    const result = document.getElementById("result");
 
-    <div id="game-area"></div>
+    let state = "idle";   // "idle" → "waiting" → "go" → "idle"
+    let goTime = 0;       // 측정시작 시각
 
-    <p id="result"></p>
+    area.addEventListener("pointerdown", () => {
+      if (state === "idle") {
+        state = "waiting";
+        area.className = "waiting";
+        area.textContent = "대기";
+        result.textContent = "";
 
-    <a href="/logout">로그아웃</a>
-  </main>
+        const delay = 1000 + Math.random() * 4000;   // 1000~5000ms
+        setTimeout(() => {
+          state = "go";
+          area.className = "go";
+          area.textContent = "클릭!";
+          goTime = performance.now();
+        }, delay);
+
+      } else if (state === "waiting") {
+        // 3단계에서 "너무 빨랐다 → 재시작"으로 바꿀 자리. 지금은 무시
+
+      } else if (state === "go") {
+        const ms = Math.round(performance.now() - goTime);
+        state = "idle";
+        area.className = "idle";
+        area.textContent = "눌러서 다시 시작";
+        result.textContent = ms + " ms";
+      }
+    });
+  </script>
 </body>
 </html>
