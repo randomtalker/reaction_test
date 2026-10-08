@@ -1,5 +1,7 @@
-import os,re
+import os
+import re
 
+import bcrypt
 import psycopg
 from dotenv import load_dotenv
 from flask import Flask, render_template, request
@@ -43,7 +45,8 @@ def sign_up():
         if not re.search(r"[^A-Za-z0-9]",password):
             return "pw doesnt follow the rule(symbolcase)"
 
-        return "PASS"
+        hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+        return hashed.decode()
 
         
     return render_template("signup.html")
