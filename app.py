@@ -1,4 +1,4 @@
-import os
+import os,re
 
 import psycopg
 from dotenv import load_dotenv
@@ -27,6 +27,23 @@ def db_check():
 @app.route("/signup",methods=["GET","POST"])
 def sign_up():
     if request.method == "POST":
-        print("id:",request.form["nickname"])
-        print("pw:",request.form["password"])
+        nickname = request.form["nickname"]
+        password = request.form["password"]
+        
+        if not re.fullmatch(r"[a-z][a-z0-9]{3,15}" , nickname):
+            return "id doesnt follow the rule"
+        if not re.fullmatch(r"[!-~]{8,64}", password):
+            return "pw doesnt follow the rule"
+        if not re.search(r"[a-z]",password):
+            return "pw doesnt follow the rule(lowercase)"
+        if not re.search(r"[A-Z]",password):            
+            return "pw doesnt follow the rule(uppercase)"
+        if not re.search(r"[0-9]",password):
+            return "pw doesnt follow the rule(numcase)"
+        if not re.search(r"[^A-Za-z0-9]",password):
+            return "pw doesnt follow the rule(symbolcase)"
+
+        return "PASS"
+
+        
     return render_template("signup.html")
