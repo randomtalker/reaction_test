@@ -3,7 +3,8 @@ CREATE TABLE account(
 		CONSTRAINT id_min_length CHECK(LENGTH(id) >= 4 )
 		CONSTRAINT id_chars CHECK( id ~ '^[a-z0-9]+$'  )
 		CONSTRAINT id_start_num CHECK( NOT id ~ '^[0-9]' ),
-	password VARCHAR(60) NOT NULL
+	password VARCHAR(60) NOT NULL,
+	join_date TIMESTAMPTZ SET DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE record(
 	record_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
