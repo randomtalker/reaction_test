@@ -1,3 +1,5 @@
+signup_log = {}
+
 import os
 import re
 import time
@@ -33,22 +35,36 @@ def db_check():
 
 @app.route("/signup",methods=["GET","POST"])
 def sign_up():
+    
     if request.method == "POST":
         nickname = request.form["nickname"]
         password = request.form["password"]
         
         if not re.fullmatch(r"[a-z][a-z0-9]{3,15}" , nickname):
-            return "id doesnt follow the rule"
+            return render_template("signup.html", error="닉네임 규칙을 확인해주세요", nickname=nickname), 400
         if not re.fullmatch(r"[!-~]{8,64}", password):
-            return "pw doesnt follow the rule"
+            return render_template("signup.html", error="패스워드 길이는 최소 8자 이상입니다", nickname=nickname), 400
         if not re.search(r"[a-z]",password):
-            return "pw doesnt follow the rule(lowercase)"
+            return render_template("signup.html", error="패스워드에는 최소 1개의 소문자가 필요합니다", nickname=nickname), 400
         if not re.search(r"[A-Z]",password):            
-            return "pw doesnt follow the rule(uppercase)"
+            return render_template("signup.html", error="패스워드에는 최소 1개의 대문자가 필요합니다", nickname=nickname), 400
         if not re.search(r"[0-9]",password):
-            return "pw doesnt follow the rule(numcase)"
+            return render_template("signup.html", error="패스워드에는 최소 1개의 숫자가 필요합니다", nickname=nickname), 400
         if not re.search(r"[^A-Za-z0-9]",password):
-            return "pw doesnt follow the rule(symbolcase)"
+            return render_template("signup.html", error="패스워드에는 최소 1개의 특수문자가 필요합니다", nickname=nickname), 400
+
+        # 다중 가입차단
+        ip = request.remote_addr
+        cur_time = time.time()
+        if not signup_log.get(ip): signup_log[ip] = [cur_time]
+        else : signup_log[ip].append(cur_time)
+        signup_log[ip] = [t for t in signup_log[ip] if cur_time - t < 60]
+        if len(signup_log[ip]) >= 10 :
+            return render_template("signup.html",error="지나치게 많은 시도" , nickname=nickname) , 429
+
+
+
+        
 
         hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
         with get_conn() as conn:
