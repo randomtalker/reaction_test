@@ -1,4 +1,5 @@
 signup_log = {}
+login_trial = {}
 
 import os
 import re
@@ -91,15 +92,65 @@ def log_in():
     if request.method == "POST":
         nickname = request.form["nickname"]
         password = request.form["password"]
+
+        ip = request.remote_addr
+        if login_trial.get(ip) and login_trial[ip][1] > time.time():
+            retry_time = time.strftime("%Y-%m-%d %H:%M", time.localtime(login_trial[ip][1]))
+            return render_template("login.html",error= f"비밀번호 오류 횟수 초과로 로그인 불가\n 재 로그인 가능시간 : {retry_time}" , nickname=nickname) , 401
+
+
         with get_conn() as gcon:
             
             hashed_pw = gcon.execute(
                 "SELECT password FROM account WHERE id = %s ", (nickname, )
             ).fetchone()
 
-            if not hashed_pw or not bcrypt.checkpw(password.encode(), hashed_pw[0].encode()): #없는아이디일 경우
+            if not hashed_pw : #없는아이디일 경우
                 return render_template("login.html",error="아이디와 비밀번호를 확인해주세요" , nickname=nickname) , 401
-            
+
+            # 비번 5회이상 틀리면 막기
+            cur_time = time.time()
+            if not bcrypt.checkpw(password.encode(), hashed_pw[0].encode()):
+                # 최초 실패
+                if not login_trial.get(ip):
+                    login_trial[ip] = [cur_time,cur_time, 1]
+                    return render_template("login.html",error= "비밀번호 오류 \n 1/5 회" , nickname=nickname) , 401
+
+                # 여기서부턴 이미 실패한경우, dict에 실패내역 보관중
+                (start_time,possible_time,trial) = login_trial[ip]
+                
+                # 연속실패 pos < t.t + [2] < 5 면 trial += 1  안내문도 {trial} / 5 회 실패
+                if possible_time < cur_time and trial < 5 :
+                    trial += 1
+                    login_trial[ip][2] = trial
+                    return render_template("login.html",error= f"비밀번호 오류 \n {trial}/5 회" , nickname=nickname) , 401
+                
+                # 5회 실패  [2] == 5 pos<= t.t -> 10분뒤 로그인 가능 pos = t.t + 600
+                elif possible_time < cur_time and trial == 5:
+                    possible_time =  cur_time + 600
+                    trial += 1
+                    login_trial[ip][1] = possible_time
+                    login_trial[ip][2] = trial
+                    return render_template("login.html",error= "비밀번호 오류 횟수 초과 \n 10분뒤 다시 시도해주세요" , nickname=nickname) , 401
+                
+                # pos <= t.t  + [2] > 5 -> 20분뒤 pos = t.t + 1200
+                elif trial == 6:
+                    possible_time = cur_time + 1200
+                    trial += 1
+                    login_trial[ip][1] = possible_time
+                    login_trial[ip][2] = trial
+                    return render_template("login.html",error= "비밀번호 오류 횟수 초과 \n 20분뒤 다시 시도해주세요" , nickname=nickname) , 401
+
+                # pos <= t.t  + [2] > 6 -> 24시간후 리셋
+                else:
+                    possible_time = cur_time + 86400
+                    trial += 1
+                    login_trial[ip][1] = possible_time
+                    login_trial[ip][2] = trial                    
+                    return render_template("login.html",error="24시간 후 다시 시도 해주세요" , nickname=nickname) , 401
+
+        login_trial[ip]  = []
+        trial = 0
         session["login_id"] = nickname
         return redirect(url_for("game"))
     
