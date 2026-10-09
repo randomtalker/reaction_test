@@ -4,7 +4,7 @@ login_trial = {}
 import os
 import re
 import time
-import unicodedata 
+import unicodedata
 
 import bcrypt
 import psycopg
@@ -120,7 +120,7 @@ def log_in():
                     return render_template("login.html",error= "비밀번호 오류 \n 1/5 회" , nickname=nickname) , 401
 
                 # 여기서부턴 이미 실패한경우, dict에 실패내역 보관중
-                (start_time,possible_time,trial) = login_trial[ip]
+                (_,possible_time,trial) = login_trial[ip]
                 
                 # 연속실패 pos < t.t + [2] < 5 면 trial += 1  안내문도 {trial} / 5 회 실패
                 if possible_time < cur_time and trial < 5 :
