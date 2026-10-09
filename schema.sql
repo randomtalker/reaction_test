@@ -1,6 +1,6 @@
 CREATE TABLE account(
 	id VARCHAR(16) PRIMARY KEY 
-		CONSTRAINT id_min_length CHECK(LENGTH(id) >= 4 )
+		CONSTRAINT id_min_length CHECK(LENGTH(id) >= 2 )
 		CONSTRAINT id_chars CHECK( id ~ '^[가-힣a-z0-9]+$'  )
 		CONSTRAINT id_start_num CHECK( NOT id ~ '^[0-9]' ),
 	password VARCHAR(60) NOT NULL,

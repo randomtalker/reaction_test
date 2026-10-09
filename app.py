@@ -14,6 +14,7 @@ from flask import Flask, redirect, render_template, request, session, url_for
 load_dotenv()
 app = Flask(__name__)
 from werkzeug.middleware.proxy_fix import ProxyFix
+
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
 app.secret_key = os.getenv("SECRET_KEY")
 
@@ -29,7 +30,7 @@ def get_conn():
 
 @app.route("/")
 def index():
-    return "ranking_reaction_flaskTEST"
+    return redirect(url_for("ranking"))
 
 
 @app.route("/db_check")
@@ -44,7 +45,7 @@ def sign_up():
         nickname = unicodedata.normalize("NFC", request.form["nickname"])
         password = request.form["password"]
         
-        if not re.fullmatch(r"[가-힣a-z][가-힣a-z0-9]{3,15}", nickname):
+        if not re.fullmatch(r"[가-힣a-z][가-힣a-z0-9]{2,15}", nickname):
             return render_template("signup.html", error="닉네임 규칙을 확인해주세요", nickname=nickname), 400
 
         
