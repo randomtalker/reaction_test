@@ -54,6 +54,7 @@ h1 {
   color: var(--danger);
   background: var(--danger-bg);
   border-radius: 8px;
+  white-space: pre-line;
 }
 
 label {
