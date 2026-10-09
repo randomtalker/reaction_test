@@ -4,6 +4,7 @@ login_trial = {}
 import os
 import re
 import time
+import unicodedata 
 
 import bcrypt
 import psycopg
@@ -38,11 +39,13 @@ def db_check():
 def sign_up():
     
     if request.method == "POST":
-        nickname = request.form["nickname"]
+        nickname = unicodedata.normalize("NFC", request.form["nickname"])
         password = request.form["password"]
         
-        if not re.fullmatch(r"[a-z][a-z0-9]{3,15}" , nickname):
+        if not re.fullmatch(r"[가-힣a-z][가-힣a-z0-9]{3,15}", nickname):
             return render_template("signup.html", error="닉네임 규칙을 확인해주세요", nickname=nickname), 400
+
+        
         if not re.fullmatch(r"[!-~]{8,64}", password):
             return render_template("signup.html", error="패스워드 길이는 최소 8자 이상입니다", nickname=nickname), 400
         if not re.search(r"[a-z]",password):
@@ -90,7 +93,7 @@ def log_in():
         return render_template("login.html")
 
     if request.method == "POST":
-        nickname = request.form["nickname"]
+        nickname = unicodedata.normalize("NFC", request.form["nickname"])
         password = request.form["password"]
 
         ip = request.remote_addr
