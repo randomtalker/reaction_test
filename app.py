@@ -45,7 +45,7 @@ def sign_up():
         nickname = unicodedata.normalize("NFC", request.form["nickname"])
         password = request.form["password"]
         
-        if not re.fullmatch(r"[가-힣a-z][가-힣a-z0-9]{2,15}", nickname):
+        if not re.fullmatch(r"[가-힣a-z][가-힣a-z0-9]{1,15}", nickname):
             return render_template("signup.html", error="닉네임 규칙을 확인해주세요", nickname=nickname), 400
 
         
