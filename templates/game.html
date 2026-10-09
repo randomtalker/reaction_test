@@ -157,7 +157,7 @@
       } else if (state === "go") {
         const ms = Math.round(performance.now() - goTime);
         if (ms < MIN_MS) { fail("100ms 미만 무효"); return; }
-        if (ms > MAX_MS) { fail("10초 초과"); return; }
+        if (ms >= MAX_MS) { fail("10초 이상"); return; }
 
         records.push(ms);
         document.getElementById("r" + records.length).textContent = ms;

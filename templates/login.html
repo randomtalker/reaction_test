@@ -10,10 +10,13 @@
   <main class="card">
     <p class="brand">반응속도 랭킹</p>
     <h1>로그인</h1>
+    {% if error %}
+    <p class="error" role="alert">{{ error }}</p>
+    {% endif %}
     <form method="post">
       <div class="field">
         <label for="nickname">닉네임</label>
-        <input id="nickname" type="text" name="nickname" autocomplete="username">
+        <input id="nickname" type="text" name="nickname" autocomplete="username" value="{{ nickname }}">
       </div>
       <div class="field">
         <label for="password">비밀번호</label>

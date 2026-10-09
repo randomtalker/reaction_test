@@ -58,7 +58,7 @@ def sign_up():
                     (nickname, hashed.decode()),
                 )
             except psycopg.errors.UniqueViolation:
-                return "Already used nickname"
+                return render_template("signup.html",error="이미 사용중인 아이디입니다." , nickname=nickname) , 409
 
         session["login_id"] = nickname
         return redirect(url_for("game"))
@@ -80,11 +80,9 @@ def log_in():
             hashed_pw = gcon.execute(
                 "SELECT password FROM account WHERE id = %s ", (nickname, )
             ).fetchone()
-            if not hashed_pw : #없는아이디일 경우
-                return "check your nickname and password OR join us first"
 
-            if not bcrypt.checkpw(password.encode(), hashed_pw[0].encode()): #비번 안맞을 경우
-                return "check your nickname and password OR join us first"
+            if not hashed_pw or not bcrypt.checkpw(password.encode(), hashed_pw[0].encode()): #없는아이디일 경우
+                return render_template("login.html",error="아이디와 비밀번호를 확인해주세요" , nickname=nickname) , 401
             
         session["login_id"] = nickname
         return redirect(url_for("game"))
@@ -126,13 +124,21 @@ def game_start():
 def g_submit():
     login_id = session.get("login_id")
     if not login_id :
+            app.logger.warning("submit rejected: reason=%s user=%s ip=%s",
+                                "not_logged_in", session.get("login_id"), request.remote_addr)
             return {"error": "not logged in"}, 401
     start_time = session.pop("start_time",None)
     if not start_time : 
+        app.logger.warning("submit rejected: reason=%s user=%s ip=%s",
+                            "no_time", session.get("login_id"), request.remote_addr)
         return {"error": "time_error" }, 400
     
     cur_time = time.time()
-    if cur_time < start_time or cur_time-start_time <= 3.3:
+    elapsed = cur_time - start_time
+
+    if cur_time < start_time or elapsed <= 3.3 or elapsed >= 300 :
+        app.logger.warning("submit rejected: reason=%s user=%s ip=%s start_time=%r submit_time=%r",
+                            "bad_elapsed", session.get("login_id"), request.remote_addr, start_time,cur_time)
         return {"error": "invalid time"}, 400
     
 
@@ -143,15 +149,28 @@ def g_submit():
 
     
     if len(records) != 3 or (not all(isinstance(x, int) for x in records)):
+        app.logger.warning("submit rejected: reason=%s user=%s ip=%s records=%r",
+                            "lack_count", session.get("login_id"), request.remote_addr, records)
         return {"error": "invalid records"}, 400
 
-    if not all( 100 <= y <= 10000 for y in records) :
+    if not all( 100 <= y < 10000 for y in records) :
+        app.logger.warning("submit rejected: reason=%s user=%s ip=%s records=%r",
+                            "range", session.get("login_id"), request.remote_addr, records)
         return {"error": "invalid records"}, 400
 
     avg = round(sum(records)/len(records))    
 
     with get_conn() as conn:
-        row = conn.execute(
+        conn.execute( #record_his에 입력
+            """
+            INSERT INTO record_his (account_id, r1,r2,r3,elapsed,ip)
+            VALUES (%s, %s,%s,%s, %s, %s)
+            """,
+            (login_id, *records, elapsed, request.remote_addr ),
+        )
+
+
+        row = conn.execute( #record에 입력
             """
             INSERT INTO record (account_id, best_record)
             VALUES (%s, %s)
@@ -160,6 +179,7 @@ def g_submit():
                 best_at = now()
             WHERE EXCLUDED.best_record <= record.best_record
             RETURNING old.best_record
+
             """,
             (login_id, avg),
         ).fetchone()
